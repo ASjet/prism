@@ -38,15 +38,12 @@ struct {
   __uint(max_entries, 256);
 } prism_byte_cnt SEC(".maps");
 
-static __always_inline void count(const void* key, __u64 bytes) {
-  __u64* pkt_cnt = bpf_map_lookup_elem(&prism_pkt_cnt, key);
-  if (NULL != pkt_cnt) {
-    *pkt_cnt += 1;
-  }
-
-  __u64* byte_cnt = bpf_map_lookup_elem(&prism_byte_cnt, key);
-  if (NULL != byte_cnt) {
-    *byte_cnt += bytes;
+static __always_inline void incr_map(void* map, const void* key, __u64 value) {
+  __u64* cnt = bpf_map_lookup_elem(map, key);
+  if (NULL != cnt) {
+    *cnt += value;
+  } else {
+    bpf_map_update_elem(map, key, &value, BPF_NOEXIST);
   }
 }
 
@@ -67,23 +64,22 @@ struct {
   __uint(max_entries, 256);
 } prism_byte_cnt SEC(".maps");
 
-#ifndef lock_xadd
-#define lock_xadd(ptr, val) ((void)__sync_fetch_and_add(ptr, val))
-#endif
-
-static __always_inline void count(const void* key, __u64 bytes) {
-  __u64* pkt_cnt = bpf_map_lookup_elem(&prism_pkt_cnt, key);
-  if (NULL != pkt_cnt) {
-    lock_xadd(pkt_cnt, 1);
+static __always_inline void incr_map(void* map, const void* key, __u64 value) {
+  if (0 == bpf_map_update_elem(map, key, &value, BPF_NOEXIST)) {
+    return;
   }
-
-  __u64* byte_cnt = bpf_map_lookup_elem(&prism_byte_cnt, key);
-  if (NULL != byte_cnt) {
-    lock_xadd(byte_cnt, bytes);
+  __u64* cnt = bpf_map_lookup_elem(map, key);
+  if (NULL != cnt) {
+    __sync_fetch_and_add(cnt, value);
   }
 }
 
 #endif
+
+static __always_inline void count(const void* key, __u64 bytes) {
+  incr_map(&prism_pkt_cnt, &key, 1);
+  incr_map(&prism_byte_cnt, &key, bytes);
+}
 
 static __always_inline struct proto_key build_key(void* start, void* end) {
   struct proto_key key = {0, 0, 0, 0};
@@ -97,10 +93,10 @@ static __always_inline struct proto_key build_key(void* start, void* end) {
     return key;
   }
   cursor += sizeof(*eth);
-  key.l3_proto = eth->h_proto;
+  key.l3_proto = bpf_ntohs(eth->h_proto);
 
   // L3 protocol
-  switch (bpf_ntohs(key.l3_proto)) {
+  switch (key.l3_proto) {
     case ETH_P_IP: {
     }
       struct iphdr* iph = cursor;
@@ -135,9 +131,8 @@ int prism(struct xdp_md* ctx) {
   struct proto_key key = build_key(data, data_end);
 
 #ifdef DEBUG
-  if (0 == key.l2_proto) {
-    bpf_printk("prism: meet unknown l2 packet with length %d\n", len);
-  }
+  bpf_printk("prism: meet pkt[%d] %d %d %d", len, key.l2_proto, key.l3_proto,
+             key.l4_proto);
 #endif
 
   count(&key, len);
