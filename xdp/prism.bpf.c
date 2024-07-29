@@ -87,7 +87,42 @@ static __always_inline void count(const void* key, __u64 bytes) {
 
 static __always_inline struct proto_key build_key(void* start, void* end) {
   struct proto_key key = {0, 0, 0, 0};
-  // TODO: parse protocol
+  void* cursor = start;
+
+  // Assume the packet is Ethernet
+  // TODO: detect the real L2 protocol
+  key.l2_proto = L2_P_ETH;
+  struct ethhdr* eth = cursor;
+  if (((void*)eth + sizeof(*eth)) > end) {
+    return key;
+  }
+  cursor += sizeof(*eth);
+  key.l3_proto = eth->h_proto;
+
+  // L3 protocol
+  switch (bpf_ntohs(key.l3_proto)) {
+    case ETH_P_IP: {
+    }
+      struct iphdr* iph = cursor;
+      if ((void*)iph + sizeof(*iph) > end) {
+        return key;
+      }
+      cursor += sizeof(*iph);
+      key.l4_proto = iph->protocol;
+      break;
+    case ETH_P_IPV6: {
+    }
+      struct ipv6hdr* ip6h = cursor;
+      if ((void*)ip6h + sizeof(*ip6h) > end) {
+        return key;
+      }
+      cursor += sizeof(*ip6h);
+      key.l4_proto = ip6h->nexthdr;
+      break;
+    default:
+      return key;
+  }
+
   return key;
 }
 
