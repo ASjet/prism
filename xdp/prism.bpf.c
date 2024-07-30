@@ -77,8 +77,8 @@ static __always_inline void incr_map(void* map, const void* key, __u64 value) {
 #endif
 
 static __always_inline void count(const void* key, __u64 bytes) {
-  incr_map(&prism_pkt_cnt, &key, 1);
-  incr_map(&prism_byte_cnt, &key, bytes);
+  incr_map(&prism_pkt_cnt, key, 1);
+  incr_map(&prism_byte_cnt, key, bytes);
 }
 
 static __always_inline struct proto_key build_key(void* start, void* end) {
@@ -114,6 +114,15 @@ static __always_inline struct proto_key build_key(void* start, void* end) {
       }
       cursor += sizeof(*ip6h);
       key.l4_proto = ip6h->nexthdr;
+      break;
+    default:
+      return key;
+  }
+
+  switch (key.l4_proto) {
+    case IPPROTO_TCP:
+      break;
+    case IPPROTO_UDP:
       break;
     default:
       return key;

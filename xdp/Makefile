@@ -12,3 +12,6 @@ load: prism.o
 
 unload:
 	sudo xdp-loader unload -a ${nic}
+
+clean:
+	rm prism.o
