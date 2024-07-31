@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/ASjet/prism/internal/util"
+	"github.com/ASjet/prism/internal/cui"
 	"github.com/ASjet/prism/internal/xdp"
 	"github.com/spf13/cobra"
 )
@@ -73,8 +73,10 @@ func printCount(obj *xdp.XDP) {
 			fmt.Println(err)
 			return
 		}
-		for k, v := range byteCnt {
-			fmt.Printf("%v: %s(%d)\n", k.Protocols(), util.ReadableSize(v), pktCnt[k])
-		}
+		tbl := cui.Render(pktCnt, byteCnt)
+		// for k, v := range byteCnt {
+		// 	fmt.Printf("%v: %s(%d)\n", k.Protocols(), util.ReadableSize(v), pktCnt[k])
+		// }
+		fmt.Println(tbl)
 	}
 }

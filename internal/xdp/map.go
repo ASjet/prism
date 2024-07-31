@@ -52,18 +52,8 @@ func ParseProtoBase(key []byte) ProtoBase {
 	}
 }
 
-func (p *ProtoBase) Layers() []string {
-	layers := make([]string, 3)
-	if p.L2 != 0 {
-		layers[0] = "L2"
-	}
-	if p.L3 != 0 {
-		layers[1] = "L3"
-	}
-	if p.L4 != 0 {
-		layers[2] = "L4"
-	}
-	return layers
+func (*ProtoBase) Layers() []string {
+	return []string{"L2", "L3", "L4"}
 }
 
 func (p *ProtoBase) Protocols() []string {
@@ -87,13 +77,13 @@ func ParseProtoKey(key []byte) ProtoKey {
 }
 
 func (p *ProtoKey) Layers() []string {
-	// TODO: parse top layer
-	return p.ProtoBase.Layers()
+	return append(p.ProtoBase.Layers(), "Top")
 }
 
 func (p *ProtoKey) Protocols() []string {
 	// TODO: parse top layer
-	return p.ProtoBase.Protocols()
+	protos := p.ProtoBase.Protocols()
+	return append(protos, protos[len(protos)-1])
 }
 
 type AppProtoKey struct {
@@ -111,11 +101,11 @@ func ParseAppProtoKey(key []byte) AppProtoKey {
 }
 
 func (p *AppProtoKey) Layers() []string {
-	// TODO: parse top layer
-	return p.ProtoBase.Layers()
+	return append(p.ProtoBase.Layers(), "UnderL7", "L7")
 }
 
 func (p *AppProtoKey) Protocols() []string {
 	// TODO: parse top layer
-	return p.ProtoBase.Protocols()
+	protos := p.ProtoBase.Protocols()
+	return append(protos, protos[len(protos)-1])
 }
