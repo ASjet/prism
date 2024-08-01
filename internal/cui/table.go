@@ -42,11 +42,13 @@ func (e Entries) Swap(i, j int) {
 	e[i], e[j] = e[j], e[i]
 }
 
-func Render(pktMap, byteMap map[xdp.ProtoKey]uint64) string {
+func RenderTable(pktMap, byteMap map[xdp.ProtoKey]uint64, width, height int) string {
 	t := table.NewWriter()
 	toInterface := util.MapWith(func(s string) interface{} { return s })
 	headers := append(new(xdp.ProtoKey).Layers(), "Packets", "Bytes", "Percentage")
 	t.AppendHeader(table.Row(toInterface(headers)))
+	t.SetAllowedRowLength(width)
+	t.SetPageSize(height)
 
 	entries := make(Entries, 0, len(pktMap))
 	for k, v := range pktMap {
@@ -81,7 +83,7 @@ func Render(pktMap, byteMap map[xdp.ProtoKey]uint64) string {
 	footer := append(table.Row(toInterface(util.Repeat("Total", len(headers)-3))),
 		pktSum, util.ReadableSize(byteSum), "100%")
 
-	t.AppendFooter(footer, rowConfigAutoMerge)
+	t.AppendRow(footer, rowConfigAutoMerge)
 	t.SetAutoIndex(false)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},

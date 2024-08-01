@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -19,27 +18,53 @@ var (
 	xdpProg           []byte
 	flagFlushInterval time.Duration
 	flagPerCPUMap     bool
-	flagAppProto      bool
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "prism <nic ...>",
-	Short: "Display network traffic components like a prism",
-	Args:  cobra.MinimumNArgs(1),
+	Use:   "prism <nic>",
+	Short: "Refract your network traffic like a prism.",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		xdp, err := xdp.LoadAndAttach(args[0], bytes.NewReader(xdpProg), xdp.LoadModeGeneric)
+		tui, err := cui.NewGoCui()
 		if err != nil {
 			return err
 		}
-		defer xdp.Close()
 
-		go printCount(xdp)
+		defer func() { // Graceful exit to avoid breaking the terminal
+			if err := recover(); err != nil {
+				tui.Exit()
+			} else {
+				tui.Exit()
+			}
+		}()
+
+		obj, err := xdp.LoadAndAttach(args[0], bytes.NewReader(xdpProg), xdp.LoadModeGeneric)
+		if err != nil {
+			return err
+		}
+		defer obj.Close()
 
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt)
-		<-sig
-		return nil
+
+		for {
+			select {
+			case <-sig:
+				return nil
+			case <-time.After(flagFlushInterval):
+				pktCnt, err := obj.PktCountMap()
+				if err != nil {
+					return err
+				}
+				byteCnt, err := obj.ByteCountMap()
+				if err != nil {
+					return err
+				}
+				x, y := tui.WindowSize()
+				tui.Render(cui.RenderTable(pktCnt, byteCnt, x, y))
+			}
+		}
 	},
 }
 
@@ -53,30 +78,6 @@ func Execute(prog []byte) {
 
 func init() {
 	// TODO: switch to per-CPU hash map
-	rootCmd.Flags().BoolVar(&flagPerCPUMap, "per-cpu", false, "Use per-CPU hash map")
-	// TODO: add support for application layer protocol
-	rootCmd.Flags().BoolVar(&flagAppProto, "app", false, "Parse application layer protocol")
+	rootCmd.Flags().BoolVar(&flagPerCPUMap, "per-cpu", false, "Use per-CPU hash map for better performance(TODO)")
 	rootCmd.Flags().DurationVarP(&flagFlushInterval, "flush-interval", "i", time.Second, "Flush interval")
-}
-
-// TODO: render a pretty table in a rich CUI
-func printCount(obj *xdp.XDP) {
-	for range time.Tick(flagFlushInterval) {
-		fmt.Println(time.Now())
-		pktCnt, err := obj.PktCountMap()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		byteCnt, err := obj.ByteCountMap()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		tbl := cui.Render(pktCnt, byteCnt)
-		// for k, v := range byteCnt {
-		// 	fmt.Printf("%v: %s(%d)\n", k.Protocols(), util.ReadableSize(v), pktCnt[k])
-		// }
-		fmt.Println(tbl)
-	}
 }

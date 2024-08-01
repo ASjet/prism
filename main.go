@@ -4,9 +4,8 @@ Copyright © 2024 ASjet
 package main
 
 import (
-	"log"
-
 	_ "embed"
+	"log"
 
 	"github.com/ASjet/prism/cmd"
 	"github.com/cilium/ebpf/rlimit"
@@ -18,7 +17,7 @@ var prismXdpProg []byte
 
 func main() {
 	if err := rlimit.RemoveMemlock(); err != nil {
-		log.Fatal("prism: remove rlimit.memlock error:", err)
+		log.Fatal("prism: remove rlimit.memlock error: ", err)
 	}
 
 	cmd.Execute(prismXdpProg)
