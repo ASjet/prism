@@ -25,17 +25,14 @@ func TestMapWith(t *testing.T) {
 	})(arr))
 }
 
-func TestAtoi(t *testing.T) {
-	assert.Equal(t, 1, Atoi("1"))
-	assert.Equal(t, 0, Atoi("Nan"))
-}
-
 func TestReduce(t *testing.T) {
 	arr := []int{1, 2, 3, 4}
-	assert.Equal(t, 10, Reduce(AddInt, 0, arr))
+	addInt := func(a, b int) int { return a + b }
+	assert.Equal(t, 10, Reduce(addInt, 0, arr))
 }
 
 func TestReduceWith(t *testing.T) {
 	arr := []int{1, 2, 3, 4}
-	assert.Equal(t, 10, ReduceWith(AddInt)(0, arr))
+	addInt := func(a, b int) int { return a + b }
+	assert.Equal(t, 10, ReduceWith(addInt)(0, arr))
 }

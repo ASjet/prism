@@ -1,9 +1,5 @@
 package util
 
-import (
-	"strconv"
-)
-
 func Repeat[T any](s T, n int) []T {
 	result := make([]T, n)
 	for i := range result {
@@ -26,18 +22,6 @@ func MapWith[T, K any](mapper func(T) K) func([]T) []K {
 	}
 }
 
-func Atoi(s string) int {
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		return 0
-	}
-	return i
-}
-
-func ToInterface[T any](t T) interface{} {
-	return t
-}
-
 func Reduce[T any](reducer func(T, T) T, cum T, arr []T) T {
 	arrLen := len(arr)
 	switch arrLen {
@@ -56,12 +40,4 @@ func ReduceWith[T any](reducer func(T, T) T) func(T, []T) T {
 	return func(cum T, arr []T) T {
 		return Reduce(reducer, cum, arr)
 	}
-}
-
-func AddInt(a, b int) int {
-	return a + b
-}
-
-func AddUint64(a, b uint64) uint64 {
-	return a + b
 }

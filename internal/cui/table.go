@@ -44,7 +44,7 @@ func (e Entries) Swap(i, j int) {
 
 func Render(pktMap, byteMap map[xdp.ProtoKey]uint64) string {
 	t := table.NewWriter()
-	toInterface := util.MapWith[string](util.ToInterface)
+	toInterface := util.MapWith(func(s string) interface{} { return s })
 	headers := append(new(xdp.ProtoKey).Layers(), "Packets", "Bytes", "Percentage")
 	t.AppendHeader(table.Row(toInterface(headers)))
 
@@ -59,10 +59,11 @@ func Render(pktMap, byteMap map[xdp.ProtoKey]uint64) string {
 
 	sort.Sort(entries)
 
-	pktSum := util.Reduce(util.AddUint64, 0, util.Map(func(entry *Entry) uint64 {
+	sumUint64 := util.ReduceWith(func(a, b uint64) uint64 { return a + b })
+	pktSum := sumUint64(0, util.Map(func(entry *Entry) uint64 {
 		return entry.Packets
 	}, entries))
-	byteSum := util.Reduce(util.AddUint64, 0, util.Map(func(entry *Entry) uint64 {
+	byteSum := sumUint64(0, util.Map(func(entry *Entry) uint64 {
 		return entry.Bytes
 	}, entries))
 
