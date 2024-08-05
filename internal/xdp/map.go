@@ -23,11 +23,29 @@ func ReadCountMap[K comparable](m *ebpf.Map, keyParser func([]byte) K) (map[K]ui
 
 	result := make(map[K]uint64)
 	iter := m.Iterate()
-	key := make([]byte, 8)
-	value := make([]byte, 8)
-	for iter.Next(&key, &value) {
-		result[keyParser(key)] += binary.LittleEndian.Uint64(value)
+	key := make([]byte, int(m.KeySize()))
+
+	switch m.Type() {
+	case ebpf.Hash:
+		value := make([]byte, int(m.ValueSize()))
+		for iter.Next(&key, &value) {
+			result[keyParser(key)] += binary.LittleEndian.Uint64(value)
+		}
+	case ebpf.PerCPUHash:
+		values := make([][]byte, ebpf.MustPossibleCPU())
+		for i := range values {
+			values[i] = make([]byte, int(m.ValueSize()))
+		}
+		for iter.Next(&key, &values) {
+			for _, value := range values {
+				result[keyParser(key)] += binary.LittleEndian.Uint64(value)
+			}
+		}
 	}
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
 	return result, nil
 }
 
