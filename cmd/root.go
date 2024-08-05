@@ -11,6 +11,8 @@ import (
 
 	"github.com/ASjet/prism/internal/cui"
 	"github.com/ASjet/prism/internal/xdp"
+	"github.com/cilium/ebpf/rlimit"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -26,9 +28,13 @@ var rootCmd = &cobra.Command{
 	Short: "Refract your network traffic like a prism.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := rlimit.RemoveMemlock(); err != nil {
+			return errors.Wrap(err, "remove rlimit.memlock error")
+		}
+
 		obj, err := xdp.LoadAndAttach(args[0], bytes.NewReader(xdpProg), xdp.LoadModeGeneric)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "load and attach xdp program error")
 		}
 		defer obj.Close()
 
