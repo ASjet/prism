@@ -42,7 +42,7 @@ func (e Entries) Swap(i, j int) {
 	e[i], e[j] = e[j], e[i]
 }
 
-func RenderTable(pktMap, byteMap map[xdp.ProtoKey]uint64, width, height int) string {
+func RenderTable(cntMap map[xdp.ProtoKey]xdp.CountValue, width, height int) string {
 	t := table.NewWriter()
 	toInterface := util.MapWith(func(s string) interface{} { return s })
 	headers := append(new(xdp.ProtoKey).Layers(), "Packets", "Bytes", "Percentage")
@@ -50,12 +50,12 @@ func RenderTable(pktMap, byteMap map[xdp.ProtoKey]uint64, width, height int) str
 	t.SetAllowedRowLength(width)
 	t.SetPageSize(height)
 
-	entries := make(Entries, 0, len(pktMap))
-	for k, v := range pktMap {
+	entries := make(Entries, 0, len(cntMap))
+	for k, v := range cntMap {
 		entries = append(entries, &Entry{
 			Protocols: k.Protocols(),
-			Packets:   v,
-			Bytes:     byteMap[k],
+			Packets:   v.PktCnt,
+			Bytes:     v.ByteCnt,
 		})
 	}
 
@@ -89,7 +89,6 @@ func RenderTable(pktMap, byteMap map[xdp.ProtoKey]uint64, width, height int) str
 		{Number: 1, AutoMerge: true},
 		{Number: 2, AutoMerge: true},
 		{Number: 3, AutoMerge: true},
-		{Number: 4, AutoMerge: true},
 	})
 	t.SetStyle(table.StyleLight)
 	t.Style().Options.SeparateRows = true

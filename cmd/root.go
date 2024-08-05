@@ -26,6 +26,12 @@ var rootCmd = &cobra.Command{
 	Short: "Refract your network traffic like a prism.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		obj, err := xdp.LoadAndAttach(args[0], bytes.NewReader(xdpProg), xdp.LoadModeGeneric)
+		if err != nil {
+			return err
+		}
+		defer obj.Close()
+
 		tui, err := cui.NewGoCui()
 		if err != nil {
 			return err
@@ -39,12 +45,6 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
-		obj, err := xdp.LoadAndAttach(args[0], bytes.NewReader(xdpProg), xdp.LoadModeGeneric)
-		if err != nil {
-			return err
-		}
-		defer obj.Close()
-
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt)
 
@@ -53,16 +53,12 @@ var rootCmd = &cobra.Command{
 			case <-sig:
 				return nil
 			case <-time.After(flagFlushInterval):
-				pktCnt, err := obj.PktCountMap()
-				if err != nil {
-					return err
-				}
-				byteCnt, err := obj.ByteCountMap()
+				m, err := obj.CountMap()
 				if err != nil {
 					return err
 				}
 				x, y := tui.WindowSize()
-				tui.Render(cui.RenderTable(pktCnt, byteCnt, x, y))
+				tui.Render(cui.RenderTable(m, x, y))
 			}
 		}
 	},
@@ -77,7 +73,5 @@ func Execute(prog []byte) {
 }
 
 func init() {
-	// TODO: switch to per-CPU hash map
-	rootCmd.Flags().BoolVar(&flagPerCPUMap, "per-cpu", false, "Use per-CPU hash map for better performance(TODO)")
 	rootCmd.Flags().DurationVarP(&flagFlushInterval, "flush-interval", "i", time.Second, "Flush interval")
 }

@@ -16,9 +16,8 @@ const (
 )
 
 type prismObj struct {
-	Prog       *ebpf.Program `ebpf:"prism"`
-	PktCntMap  *ebpf.Map     `ebpf:"prism_pkt_cnt"`
-	ByteCntMap *ebpf.Map     `ebpf:"prism_byte_cnt"`
+	Prog   *ebpf.Program `ebpf:"prism"`
+	CntMap *ebpf.Map     `ebpf:"prism_cnt"`
 }
 
 type XDP struct {
@@ -27,19 +26,14 @@ type XDP struct {
 	l    link.Link
 }
 
-func (x *XDP) PktCountMap() (map[ProtoKey]uint64, error) {
-	return ReadCountMap(x.obj.PktCntMap, ParseProtoKey)
-}
-
-func (x *XDP) ByteCountMap() (map[ProtoKey]uint64, error) {
-	return ReadCountMap(x.obj.ByteCntMap, ParseProtoKey)
+func (x *XDP) CountMap() (map[ProtoKey]CountValue, error) {
+	return ReadCountMap(x.obj.CntMap, ParseProtoKey, ParseCountValue)
 }
 
 func (x *XDP) Close() {
 	x.l.Close()
 	x.obj.Prog.Close()
-	x.obj.PktCntMap.Close()
-	x.obj.ByteCntMap.Close()
+	x.obj.CntMap.Close()
 }
 
 func LoadAndAttach(nic string, prog io.ReaderAt, mode string) (*XDP, error) {
