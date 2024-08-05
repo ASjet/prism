@@ -21,7 +21,7 @@ struct proto_key {
 #endif
 };
 
-#ifdef PER_CPU
+#ifndef NO_PER_CPU
 
 struct {
   __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
